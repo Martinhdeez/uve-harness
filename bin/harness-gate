@@ -1,0 +1,33 @@
+#!/bin/sh
+# harness-gate — runs the project's single gate command and records the commit it passed on.
+#   harness-gate          run the gate; on green with no uncommitted changes, stamp HEAD
+#   harness-gate --check  exit 0 if HEAD carries a green stamp (or the project has no gate), else 2
+# A project declares its gate by having a `check` target in its Makefile or a
+# `verify` script in package.json.
+
+root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+cd "$root" || exit 0
+stamp=$(git rev-parse --absolute-git-dir)/gate-ok
+
+if grep -qE '^check:' Makefile 2>/dev/null; then gate='make check'
+elif grep -qE '^[[:space:]]*"verify"[[:space:]]*:' package.json 2>/dev/null; then gate='npm run verify'
+else echo "gate: no gate in $root (no 'make check', no 'npm run verify')" >&2; exit 0
+fi
+
+clean() { git diff --quiet HEAD 2>/dev/null; }
+
+if [ "$1" = --check ]; then
+  clean && [ "$(cat "$stamp" 2>/dev/null)" = "$(git rev-parse HEAD)" ] && exit 0
+  echo "gate: '$gate' has not passed on this commit. Commit, run harness-gate, then retry." >&2
+  exit 2
+fi
+
+rm -f "$stamp"
+echo "gate: $gate" >&2
+$gate || { echo "gate: RED" >&2; exit 1; }
+if clean; then
+  git rev-parse HEAD > "$stamp"
+  echo "gate: GREEN at $(git rev-parse --short HEAD)" >&2
+else
+  echo "gate: GREEN, but uncommitted changes: not stamped. Commit and run again." >&2
+fi

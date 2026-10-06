@@ -1,0 +1,17 @@
+#!/bin/sh
+# harness-trace <requirements.md> [tests-dir] — every requirement id declared in the plan
+# must be named by at least one test. Exits 1 and lists the ids no test names.
+# An id is declared where it opens a line item or a table row: "- REQ-SI5-6 ..." or "| REQ-SI5-6 |".
+
+req=${1:?usage: harness-trace <requirements.md> [tests-dir]}
+tests=${2:-.}
+ids=$(grep -oE '^[[:space:]]*([-*]|\|)[[:space:]]*\**REQ-[A-Za-z0-9]+-[0-9]+' "$req" | grep -oE 'REQ-[A-Za-z0-9]+-[0-9]+' | sort -u)
+[ -n "$ids" ] || { echo "trace: no requirement ids declared in $req" >&2; exit 1; }
+
+missing=0
+for id in $ids; do
+  grep -rqE --exclude-dir=node_modules --exclude-dir=.venv --exclude-dir=.git --exclude-dir=docs \
+    "$id([^0-9]|\$)" "$tests" || { echo "trace: $id has no test"; missing=1; }
+done
+[ $missing = 0 ] && echo "trace: $(echo "$ids" | wc -l | tr -d ' ') requirements, all named by a test" >&2
+exit $missing

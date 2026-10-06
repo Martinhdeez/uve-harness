@@ -1,0 +1,11 @@
+{
+  "name": "martin",
+  "owner": { "name": "Martín Hernández González" },
+  "plugins": [
+    {
+      "name": "harness",
+      "description": "Incremental V-cycle harness with role agents and a machine-checked gate.",
+      "source": "./"
+    }
+  ]
+}

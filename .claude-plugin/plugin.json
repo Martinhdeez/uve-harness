@@ -1,0 +1,6 @@
+{
+  "name": "harness",
+  "version": "0.1.0",
+  "description": "Incremental V-cycle harness: an orchestrator plans iterations and dispatches builders, blind test authors, reviewers, a designer, an assistant and devops, behind one gate.",
+  "author": { "name": "Martín Hernández González" }
+}
