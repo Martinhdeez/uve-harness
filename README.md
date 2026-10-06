@@ -50,7 +50,7 @@ The user approves at three points: the plan of the iteration, each prototype, an
 
 | Rule | Effect |
 |---|---|
-| `gh pr create` without a green gate on the current commit | denied |
+| `gh pr create` without a green gate on the current commit, in a project prepared with `/harness:init` | denied |
 | Reading a `.env*` file that is not an example | denied |
 | A push or a merge that lands on `main` or `master` | asks the user |
 
@@ -59,6 +59,23 @@ commit it passed on. `bin/harness-trace` fails when a requirement id has no test
 
 Everything else (scope, who may read what, the designer's files) is a rule the agents are
 given and the reviewer checks; it is not enforced by a hook.
+
+## Status line
+
+`statusline/statusline-command.sh` is my status line: caveman mode, model, effort, folder,
+context bar, and the 5-hour and 7-day limits. A plugin cannot set the main status line, so on
+a new machine run `sh scripts/install-statusline.sh` once (needs `jq`).
+
+## Skills the agents use when installed
+
+| Skill | Used by | Install |
+|---|---|---|
+| `tdd` | builder | `npx skills add mattpocock/skills@tdd -g -y` |
+| `playwright-best-practices` | test-author, designer | `npx skills add currents-dev/playwright-best-practices-skill@playwright-best-practices -g -y` |
+| `web-design-guidelines` | designer | `npx skills add vercel-labs/agent-skills@web-design-guidelines -g -y` |
+| `frontend-design`, `redesign-existing-projects`, `ui-ux-pro-max` | designer, one per task | |
+
+The harness works without them; each agent only loads one that is present.
 
 ## What a project keeps
 

@@ -31,6 +31,8 @@ git checkout -q Makefile && commit next
 "$gate" --check 2>/dev/null; expect "gate: a new commit voids the stamp" 2 $?
 
 # guard: gate before a pull request
+expect "guard: no gate demanded before /harness:init" allow "$(bash_guard 'gh pr create --base dev --fill')"
+printf '# Project\n\n## Harness\n' > AGENTS.md && git add -A && commit harness
 expect "guard: gh pr create without a green gate" deny "$(bash_guard 'gh pr create --base dev --fill')"
 "$gate" 2>/dev/null
 expect "guard: gh pr create with a green gate" allow "$(bash_guard 'git push -u origin feat/x && gh pr create --base dev')"
@@ -72,5 +74,13 @@ out=$("$trace" requirements.md tests 2>/dev/null); expect "trace: a missing requ
 expect "trace: names only the missing one" "trace: REQ-XX1-2 has no test" "$out"
 echo "test('REQ-XX1-2 second', f)" >> tests/a.test.ts
 "$trace" requirements.md tests 2>/dev/null; expect "trace: all named exits 0" 0 $?
+
+# status line
+home=$tmp/home && mkdir -p "$home/.claude" && echo '{"model":"opus"}' > "$home/.claude/settings.json"
+HOME=$home sh "$here/scripts/install-statusline.sh" >/dev/null
+expect "statusline: settings point at the script and keep other keys" "bash $home/.claude/statusline-command.sh opus" \
+  "$(jq -r '.statusLine.command + " " + .model' "$home/.claude/settings.json")"
+out=$(echo '{"model":{"display_name":"Opus"},"workspace":{"current_dir":"/a/proj"}}' | HOME=$home bash "$home/.claude/statusline-command.sh")
+case $out in *Opus*proj*) expect "statusline: renders model and folder" ok ok ;; *) expect "statusline: renders model and folder" ok "$out" ;; esac
 
 exit $fails

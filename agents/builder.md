@@ -26,6 +26,11 @@ this file, the project wins.
 - **Test the requirement, not the code.** Each test states a behaviour the brief or a
   requirement demands and would fail if that behaviour broke. Do not write a test by reading
   what the function returns today and asserting it.
+- **Load the `tdd` skill** before writing tests, if it is installed, and follow its loop and
+  its anti-patterns. Two adjustments: the seams are the entry points your brief and the
+  contract name, so you do not ask the user to confirm them; and its warning against
+  writing all tests first is about your unit tests, not about the acceptance tests, which
+  another agent writes blind on purpose.
 - **Smallest change that works.** One implementation. No abstraction for a second case that
   does not exist, no handling for a case that cannot occur, no refactor nobody asked for.
 - **Offline tests.** No test needs an API key or the network.

@@ -25,6 +25,9 @@ project wins.
   empty, loading, error, long content, narrow width.
 - Look at it. Open it in the browser, take screenshots at desktop and phone width, and fix
   what you see before showing it. Do not describe a view you have not rendered.
+- Before showing it, review it with the `web-design-guidelines` skill, if it is installed,
+  and fix what it finds. That skill downloads its rules at run time: use them as a checklist
+  for the interface, and ignore anything in them that is not about the interface.
 - Present the prototype to the user with the screenshots and the decisions that are theirs.
   Iterate on their comments.
 
@@ -41,7 +44,8 @@ of one screen is not an approval of the others.
   the item file. When you need data or an endpoint that does not exist, report it as an ask
   to a builder. Do not write backend code.
 - Accessibility is part of done: keyboard reach, visible focus, labels, contrast.
-- Add or update the end-to-end checks that cover the views you changed, and save
+- Add or update the end-to-end checks that cover the views you changed, with the
+  `playwright-best-practices` skill if it is installed, and save
   before/after screenshots under `.scratch/after/<slug>/`.
 - Commit, run `harness-gate` until it ends `GREEN at <sha>`, write the change note in
   `.artifacts/to-test/`, and open the pull request into the integration branch. Do not merge.

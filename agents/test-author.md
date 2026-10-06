@@ -38,6 +38,12 @@ untestable requirement is a defect in the plan, and reporting it is the useful r
   fixture, never copied from a run.
 - **Offline and deterministic**: no API key, no network, no clock; scripted models and fixed
   seeds.
+- **Screens**: when the surface is the interface, load the `playwright-best-practices` skill,
+  if it is installed, and follow its guidance on locators, assertions and waiting. Locate by
+  role and visible text the requirement or the approved prototype names, never by a class
+  or a test id you would have to read the implementation to know.
+- Do not load the `tdd` skill: its one-test-one-implementation loop is the builder's. You
+  write the whole acceptance set first, by design.
 - Acceptance tests live apart from builder tests (the project says where; by default
   `tests/acceptance/`). The two sets never share a file.
 

@@ -2,7 +2,8 @@
 """PreToolUse guard. Three rules, each decided by the machine and not by a prompt:
 
 1. Secrets: no agent reads a .env file other than an example. Denied.
-2. Gate: `gh pr create` needs a green gate stamp on the current commit. Denied.
+2. Gate: in a project with a `## Harness` section, `gh pr create` needs a green gate stamp
+   on the current commit. Denied.
 3. main: a push or a merge that lands on main or master asks the user. Never automatic.
 """
 import json
@@ -48,6 +49,21 @@ def targets_protected(tokens):
     return False
 
 
+def opted_in(cwd):
+    """The gate is required only in a project prepared with /harness:init."""
+    top = run(["git", "rev-parse", "--show-toplevel"], cwd)
+    if not top or top.returncode != 0:
+        return False
+    for name in ("AGENTS.md", "CLAUDE.md"):
+        try:
+            with open(os.path.join(top.stdout.strip(), name), encoding="utf-8") as f:
+                if re.search(r"^## Harness\s*$", f.read(), re.M):
+                    return True
+        except OSError:
+            pass
+    return False
+
+
 def check_bash(command, cwd):
     if READERS.search(command):
         for match in ENV_FILE.finditer(command):
@@ -75,7 +91,7 @@ def check_bash(command, cwd):
                 decide("ask", "could not read the base branch of this pull request.")
             if base.stdout.strip() in PROTECTED:
                 decide("ask", "this pull request merges into main. Only the user merges into main.")
-        elif tokens[:3] == ["gh", "pr", "create"]:
+        elif tokens[:3] == ["gh", "pr", "create"] and opted_in(cwd):
             gate = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "bin", "harness-gate")
             check = run([gate, "--check"], cwd)
             if check and check.returncode == 2:
