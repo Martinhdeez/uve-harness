@@ -6,12 +6,13 @@ incremental V-cycle, one agent per role, one gate, and three rules a machine enf
 ## Install
 
 ```sh
-claude plugin marketplace add ~/harness
-claude plugin install harness@martin                  # every project
-claude plugin install harness@martin --scope project  # only the current one
+gh repo clone Martinhdeez/uve-harness ~/harness && sh ~/harness/setup.sh
 ```
 
-After a change here: `claude plugin marketplace update martin`. Self-check: `sh tests/test.sh`.
+`setup.sh` installs the plugin for every project, the status line and the three skills the
+agents use. It needs `claude`, `git`, `python3`, `jq` and `npx`, and is safe to run again.
+
+To update: `git -C ~/harness pull`, then start a new session. Self-check: `sh tests/test.sh`.
 
 ## Use
 

@@ -7,6 +7,11 @@ src=$(cd "$(dirname "$0")/.." && pwd)/statusline/statusline-command.sh
 dst=$HOME/.claude/statusline-command.sh
 settings=$HOME/.claude/settings.json
 
+if cmp -s "$src" "$dst" && [ "$(jq -r '.statusLine.command // empty' "$settings" 2>/dev/null)" = "bash $dst" ]; then
+  echo "status line already installed"
+  exit 0
+fi
+
 mkdir -p "$HOME/.claude"
 cp "$src" "$dst"
 [ -f "$settings" ] || echo '{}' > "$settings"
