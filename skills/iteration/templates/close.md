@@ -24,6 +24,11 @@ Integration branch at `<sha>`; gate: `<command>` green on <date>.
 
 <What this iteration learned that the next plan must start from.>
 
+## Lessons for the harness
+
+| Lesson | Evidence | Proposed edit (file) | Approved |
+|---|---|---|---|
+
 ## Open for the user
 
 <Decisions only the user can take.>

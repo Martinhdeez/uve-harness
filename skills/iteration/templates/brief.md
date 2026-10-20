@@ -1,6 +1,7 @@
 # Brief: <ID> <title>
 
 - **Role:** builder | test-author | designer | assistant | devops
+- **Weight:** light (no reviewer; the gate is the proof) | full
 - **Iteration:** `docs/plan/<NN-slug>/`
 - **Branch:** `<type>/<slug>` from `<integration branch>`
 

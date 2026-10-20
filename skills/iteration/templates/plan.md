@@ -11,9 +11,9 @@ will see it.>
 
 ## Items
 
-| Id | Item | Type | Agent | Depends on | Requirements |
-|---|---|---|---|---|---|
-| XX1 | <title> | fix / feature / view / chore / ops | builder | — | REQ-XX1-1 … |
+| Id | Item | Type | Weight | Agent | Depends on | Requirements |
+|---|---|---|---|---|---|---|
+| XX1 | <title> | fix / feature / view / chore / ops | light / full | builder | — | REQ-XX1-1 … |
 
 ## Waves
 

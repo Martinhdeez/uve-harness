@@ -39,13 +39,29 @@ next iteration starts from what the last one measured, not from what it intended
 
 A project may add roles in its `## Harness` section; brief them the same way.
 
+### Weight: light or full
+
+Every item gets a weight in the plan. The full cycle pays for independent verification; a
+small change does not need it.
+
+- **Light**: one agent does the item and the gate verifies it. No test author, no reviewer.
+  An item is light only if all of these hold: it touches one or two files, it changes no
+  contract or public interface, it has no requirement a stranger must test blind, and it
+  does not touch auth, payments, migrations, concurrency or user data. A light fix still
+  needs its test that fails on the old code.
+- **Full**: the table above, unchanged. Any feature with a contract, any view, any item that
+  fails one of the light conditions.
+
+When in doubt, the item is full. The user sees every weight at the plan checkpoint and can
+change it.
+
 ## Phase 1: plan
 
 1. Read the project's rules, the last iteration's closing note and open findings, and the
    code the iteration touches.
 2. Create `docs/plan/<NN-slug>/` from the templates in this skill's `templates/` folder:
    - `00-plan.md`: goal of the increment, items with short ids (two or three letters and a
-     number: `TR1`), order and waves, what is out of scope.
+     number: `TR1`) and their weight, order and waves, what is out of scope.
    - `requirements.md` (features): each requirement as `REQ-<ITEM>-<n>`, one testable
      sentence, with the surface it is checked through.
    - `contracts.md` (features): the entry points the test author and the builder share:
@@ -72,12 +88,16 @@ For each item, in the order of the plan:
 4. **View items**: the designer prototypes, then you stop. **Checkpoint: the user approves
    the prototype.** Only then tell the designer to implement. Forward *designer asks* from
    builders as soon as they appear, so slots ship with the views instead of reopening them.
-5. **Review**: when a pull request opens, launch `harness:reviewer` with the brief and the
+5. **Light items** skip steps 6 to 8. When the pull request opens, check that `harness-gate`
+   stamped its head commit green and that the diff stays inside the brief's scope, then
+   merge it into the integration branch and tick the checklist. If either check fails, the
+   item becomes full and goes to review.
+6. **Review**: when a pull request opens, launch `harness:reviewer` with the brief and the
    pull request number. Do not pass the builder's report or your opinion: the reviewer reads
    the diff cold.
-6. On `request changes`, send the findings to the same agent and review again. After two
+7. On `request changes`, send the findings to the same agent and review again. After two
    rounds without approval, stop and bring the disagreement to the user.
-7. The reviewer merges into the integration branch and ticks the checklist. Check that it did.
+8. The reviewer merges into the integration branch and ticks the checklist. Check that it did.
 
 If an agent reports that the brief or a requirement is wrong, fix the plan first; do not let
 it improvise around it.
@@ -89,7 +109,15 @@ it improvise around it.
 2. Write the closing note `docs/plan/<NN-slug>/99-close.md` from the template: what was
    delivered per item with its pull request, what was measured and by which run, what was
    **not** measured, what is parked and why, and the findings that open the next iteration.
-3. **Checkpoint: the user approves the close.** The next iteration is not planned before it.
+3. Draw at most three lessons about the harness itself, not the product: a pattern seen in
+   this iteration's reviews, rejected pull requests or reworked briefs (a builder that
+   missed the same thing twice, a brief that lacked a fixture, a gate that let a fault
+   through). Each lesson cites its evidence (pull requests, review findings) and proposes
+   one concrete edit to the affected role's agent file or to the project's `## Harness`
+   section. A pattern seen once is a finding, not a lesson. Apply nothing yet.
+4. **Checkpoint: the user approves the close** and, one by one, the proposed lesson edits.
+   Apply the approved edits; a rejected lesson stays in the closing note only. The next
+   iteration is not planned before this.
 
 ## Rules that hold in every phase
 
