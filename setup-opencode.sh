@@ -18,7 +18,7 @@ command -v opencode >/dev/null || echo "setup: 'opencode' is not installed yet" 
 mkdir -p "$config/agents" "$config/skills" "$config/commands" "$config/plugins"
 
 # Claude Code names (harness:builder, claude --agent) become OpenCode ids (harness-builder).
-rename='s#claude --agent harness:#opencode --agent harness-#g; s#harness:#harness-#g'
+rename='s#claude --agent harness:#opencode run --agent harness-#g; s#harness:#harness-#g'
 
 for file in "$here"/agents/*.md; do
   name=$(basename "$file" .md)

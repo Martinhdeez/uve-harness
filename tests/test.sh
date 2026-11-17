@@ -93,19 +93,19 @@ expect "opencode: no Claude Code names left" "" "$(grep -rl 'harness:\|claude --
 expect "opencode: skill renamed with its templates" "name: harness-iteration yes" \
   "$(grep '^name:' "$oc/skills/harness-iteration/SKILL.md") $([ -f "$oc/skills/harness-iteration/templates/brief.md" ] && echo yes)"
 expect "opencode: command per skill" "yes" "$([ -f "$oc/commands/harness-init.md" ] && echo yes)"
-plugin() { # plugin <tool> <args json> -> allow | block
+plugin() { # plugin <tool> <input json> -> allow | block; plugin path -> first PATH entry
   node --input-type=module -e "
-    const { Harness } = await import('$oc/plugins/harness.js')
-    const hooks = await Harness({ directory: process.cwd() })
-    try { await hooks['tool.execute.before']({ tool: '$1' }, { args: $2 }); console.log('allow') }
-    catch { console.log('block') }"
+    const hooks = {}
+    const on = (name) => ({ hook: async (_, fn) => { hooks[name] = fn } })
+    const { default: plugin } = await import('$oc/plugins/harness.js')
+    await plugin.setup({ tool: on('tool'), shell: on('shell') })
+    if ('$1' === 'path') { const e = { env: {} }; hooks.shell(e); console.log(e.env.PATH.split(':')[0]) }
+    else try { hooks.tool({ tool: '$1', input: ${2:-0} }); console.log('allow') } catch { console.log('block') }"
 }
 expect "opencode: plugin blocks reading .env" block "$(plugin read '{"path":"/p/.env"}')"
 expect "opencode: plugin allows .env.example" allow "$(plugin read '{"path":"/p/.env.example"}')"
 expect "opencode: plugin blocks push to main" block "$(plugin shell '{"command":"git push origin main"}')"
 expect "opencode: plugin allows git status" allow "$(plugin shell '{"command":"git status"}')"
-expect "opencode: plugin puts bin on PATH" "$here/bin" "$(node --input-type=module -e "
-  const { Harness } = await import('$oc/plugins/harness.js')
-  const out = { env: {} }; await (await Harness({}))['shell.env']({}, out); console.log(out.env.PATH.split(':')[0])")"
+expect "opencode: plugin puts bin on PATH" "$here/bin" "$(plugin path)"
 
 exit $fails
