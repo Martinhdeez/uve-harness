@@ -79,7 +79,9 @@ ask the user.
 For each item, in the order of the plan:
 
 1. **Write the brief** from `templates/brief.md`. It is the only context the agent gets.
-2. **Launch the agent** in its own worktree. Items with no shared files run in parallel. In
+2. **Launch the agent** in its own worktree; where the runtime does not create one (OpenCode),
+   the brief tells the agent to make it with `git worktree add`. Items with no shared files
+   run in parallel. In
    Orca, a one-shot agent may be a worker in its own worktree instead of a subagent; the
    brief is the same.
 3. **Feature items**: launch the test author and the builder at the same time. Give the test

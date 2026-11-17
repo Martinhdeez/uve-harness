@@ -19,6 +19,30 @@ To update: `git -C ~/harness pull`, then start a new session. Self-check: `sh te
 In a project, once: `/harness:init`. Then `/harness:iteration` in the session that
 orchestrates. The designer can also be a session of its own: `claude --agent harness:designer`.
 
+## OpenCode
+
+The same harness runs on OpenCode v2:
+
+```sh
+gh repo clone Martinhdeez/uve-harness ~/harness && sh ~/harness/setup-opencode.sh
+```
+
+It writes into `~/.config/opencode/`: the agents as `harness-<role>` subagents (the designer
+is also a primary agent), the skills as `harness-init` and `harness-iteration` with a command
+each, and `plugins/harness.js`, which runs `scripts/guard.py` before `shell`, `read` and
+`grep` and puts `bin/` on the shell's `PATH`. Agents, skills and commands are copies: run the
+script again after a pull. `HARNESS_MODEL` picks the model (default
+`anthropic/claude-opus-5-5`).
+
+Differences from Claude Code:
+
+- A plugin cannot ask the user, so a push or merge to `main` is blocked instead of asked. The
+  user runs it.
+- No worktree isolation for subagents: the brief tells the agent to `git worktree add`.
+- No status line.
+
+In a project: `/harness-init` once, then `/harness-iteration`.
+
 ## The cycle
 
 ```text

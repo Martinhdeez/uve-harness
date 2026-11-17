@@ -83,4 +83,29 @@ expect "statusline: settings point at the script and keep other keys" "bash $hom
 out=$(echo '{"model":{"display_name":"Opus"},"workspace":{"current_dir":"/a/proj"}}' | HOME=$home bash "$home/.claude/statusline-command.sh")
 case $out in *Opus*proj*) expect "statusline: renders model and folder" ok ok ;; *) expect "statusline: renders model and folder" ok "$out" ;; esac
 
+# opencode
+xdg=$tmp/xdg && oc=$xdg/opencode
+XDG_CONFIG_HOME=$xdg HARNESS_SKIP_SKILLS=1 sh "$here/setup-opencode.sh" >/dev/null 2>&1
+expect "opencode: builder is a subagent with a provider model" "mode: subagent|model: anthropic/claude-opus-5-5" \
+  "$(grep -E '^(mode|model):' "$oc/agents/harness-builder.md" | paste -sd'|' -)"
+expect "opencode: designer can also be a primary agent" "mode: all" "$(grep '^mode:' "$oc/agents/harness-designer.md")"
+expect "opencode: no Claude Code names left" "" "$(grep -rl 'harness:\|claude --agent' "$oc" | grep -v plugins)"
+expect "opencode: skill renamed with its templates" "name: harness-iteration yes" \
+  "$(grep '^name:' "$oc/skills/harness-iteration/SKILL.md") $([ -f "$oc/skills/harness-iteration/templates/brief.md" ] && echo yes)"
+expect "opencode: command per skill" "yes" "$([ -f "$oc/commands/harness-init.md" ] && echo yes)"
+plugin() { # plugin <tool> <args json> -> allow | block
+  node --input-type=module -e "
+    const { Harness } = await import('$oc/plugins/harness.js')
+    const hooks = await Harness({ directory: process.cwd() })
+    try { await hooks['tool.execute.before']({ tool: '$1' }, { args: $2 }); console.log('allow') }
+    catch { console.log('block') }"
+}
+expect "opencode: plugin blocks reading .env" block "$(plugin read '{"path":"/p/.env"}')"
+expect "opencode: plugin allows .env.example" allow "$(plugin read '{"path":"/p/.env.example"}')"
+expect "opencode: plugin blocks push to main" block "$(plugin shell '{"command":"git push origin main"}')"
+expect "opencode: plugin allows git status" allow "$(plugin shell '{"command":"git status"}')"
+expect "opencode: plugin puts bin on PATH" "$here/bin" "$(node --input-type=module -e "
+  const { Harness } = await import('$oc/plugins/harness.js')
+  const out = { env: {} }; await (await Harness({}))['shell.env']({}, out); console.log(out.env.PATH.split(':')[0])")"
+
 exit $fails
