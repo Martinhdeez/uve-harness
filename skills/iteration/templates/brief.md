@@ -15,7 +15,15 @@
 
 ## In scope
 
-<Files or folders this agent may change.>
+<Files or folders this agent may change, one per line (globs allowed). Before your first edit,
+copy this list to `.scratch/scope`: `gh pr create` is denied if the branch changes anything
+outside it. If something outside must change, stop and report.>
+
+## Where to look
+
+<Entry points the orchestrator already read, as `file:line` with one line on why each matters.
+Builder, designer, devops and assistant briefs only. **Never in a test author's brief**: it
+would show the implementation it must not see.>
 
 ## Closed
 

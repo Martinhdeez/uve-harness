@@ -2,8 +2,9 @@
 """PreToolUse guard. Three rules, each decided by the machine and not by a prompt:
 
 1. Secrets: no agent reads a .env file other than an example. Denied.
-2. Gate: in a project with a `## Harness` section, `gh pr create` needs a green gate stamp
-   on the current commit. Denied.
+2. Gate and scope: in a project with a `## Harness` section, `gh pr create` needs a green gate
+   stamp on the current commit, and every changed file inside `.scratch/scope` when the
+   worktree has one. Denied.
 3. main: a push or a merge that lands on main or master asks the user. Never automatic.
 """
 import json
@@ -16,8 +17,14 @@ PROTECTED = {"main", "master"}
 ENV_FILE = re.compile(r"(?:^|[\s/'\"=<])(\.env(?:\.[\w-]+)?)(?=$|[\s'\";|&)>])")
 EXAMPLES = (".example", ".sample", ".template", ".dist")
 READERS = re.compile(
-    r"(?:^|[\s;&|(])(cat|bat|less|more|head|tail|grep|rg|sed|awk|cut|strings|xxd|base64|nl|tac)\s"
+    r"(?:^|[\s;&|(])(cat|bat|less|more|head|tail|grep|rg|sed|awk|cut|strings|xxd|base64|nl|tac"
+    r"|od|hexdump|diff|sort|uniq|jq|yq|source|vim?|nvim|nano|emacs|view"
+    r"|python3?|node|deno|bun|ruby|perl|php)\s"
 )
+# `. .env` sources it and `< .env` feeds it to any command; neither needs a reader name.
+DOT_OR_REDIRECT = re.compile(r"(?:(?:^|[;&|(]\s*)\.\s+|<\s*)['\"]?([^\s'\";|&)<>]+)")
+# Loading an env file into a process is how apps run; it does not print the secrets.
+ENV_FILE_FLAG = re.compile(r"--env-file[=\s]+\S+")
 
 
 def is_secret(name):
@@ -65,10 +72,16 @@ def opted_in(cwd):
 
 
 def check_bash(command, cwd):
-    if READERS.search(command):
-        for match in ENV_FILE.finditer(command):
+    # ponytail: a name-based list, not a sandbox. `cp .env x` and then reading x still gets
+    # through; real isolation needs the secrets outside the agent's filesystem.
+    scan = ENV_FILE_FLAG.sub(" ", command)
+    if READERS.search(scan):
+        for match in ENV_FILE.finditer(scan):
             if is_secret(match.group(1)):
                 decide("deny", f"{match.group(1)} is a secrets file; read .env.example instead.")
+    for match in DOT_OR_REDIRECT.finditer(scan):
+        if is_secret(match.group(1)):
+            decide("deny", f"{os.path.basename(match.group(1))} is a secrets file; read .env.example instead.")
 
     out = run(["git", "branch", "--show-current"], cwd)
     on_protected = bool(out) and out.stdout.strip() in PROTECTED
@@ -98,10 +111,15 @@ def check_bash(command, cwd):
             if base.stdout.strip() in PROTECTED:
                 decide("ask", "this pull request merges into main. Only the user merges into main.")
         elif tokens[:3] == ["gh", "pr", "create"] and opted_in(cwd):
-            gate = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "bin", "harness-gate")
-            check = run([gate, "--check"], cwd)
+            bin_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "bin")
+            check = run([os.path.join(bin_dir, "harness-gate"), "--check"], cwd)
             if check and check.returncode == 2:
                 decide("deny", check.stderr.strip())
+            base = next((tokens[i + 1] for i, t in enumerate(tokens[:-1]) if t in ("--base", "-B")), "dev")
+            scope = run([os.path.join(bin_dir, "harness-scope"), base], cwd)
+            if scope and scope.returncode == 1:
+                decide("deny", "the branch changes files outside the brief's scope (.scratch/scope):\n"
+                       + scope.stdout.strip() + "\nRevert them, or report that the brief must widen.")
 
 
 def main():

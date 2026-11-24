@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+"""harness-lane [base] — decide from the diff, not from the plan, whether an item is light.
+
+  harness-lane [base]          print "light" (exit 0) or "full" and each reason (exit 1)
+  harness-lane --scope [base]  only check the diff against .scratch/scope (exit 0 or 1)
+
+base defaults to `dev`. Exit 2 when the diff cannot be read.
+
+Light needs all of these, the same conditions the iteration skill gives:
+  - at most two changed files that are not tests;
+  - no sensitive path (built-in list plus the project's `**Sensitive:**` line);
+  - no `contracts.md`, no acceptance test, no `**Never touch:**` path;
+  - every changed path inside `.scratch/scope`, when the worktree has one.
+The number of changed lines is not a condition: for agent-written diffs, which paths a change
+touches says more about its risk than its size.
+"""
+import fnmatch
+import os
+import re
+import subprocess
+import sys
+
+SENSITIVE = re.compile(
+    r"auth|login|passw|secret|token|crypt|session|permission|payment|billing|invoice|stripe|"
+    r"checkout|migrat|(^|/)schema\.(sql|prisma)$|(^|/)\.github/workflows/|dockerfile|"
+    r"(^|/)(docker-)?compose\.ya?ml$|(^|/)\.env"
+)
+TEST = re.compile(r"(^|/)(tests?|spec|__tests__)/|[._](test|spec)\.[^/]+$|(^|/)test_[^/]+$")
+ALWAYS_IN_SCOPE = (".artifacts/", ".scratch/")
+
+
+def git(*args):
+    out = subprocess.run(["git", *args], capture_output=True, text=True)
+    if out.returncode != 0:
+        print(f"lane: git {' '.join(args)} failed: {out.stderr.strip()}", file=sys.stderr)
+        sys.exit(2)
+    return out.stdout
+
+
+def matches(path, pattern):
+    pattern = pattern.strip().strip("`")
+    if not pattern:
+        return False
+    folder = pattern.rstrip("/*")
+    return fnmatch.fnmatch(path, pattern) or path == folder or path.startswith(folder + "/")
+
+
+def harness_paths(root, label):
+    """Backticked paths on the `- **<label>:**` line of the project's AGENTS.md or CLAUDE.md."""
+    for name in ("AGENTS.md", "CLAUDE.md"):
+        try:
+            text = open(os.path.join(root, name), encoding="utf-8").read()
+        except OSError:
+            continue
+        line = re.search(rf"^\s*-\s*\*\*{label}:\*\*(.*)$", text, re.M)
+        if line:
+            return [p for p in re.findall(r"`([^`]+)`", line.group(1)) if "<" not in p]
+    return []
+
+
+def out_of_scope(root, files):
+    try:
+        lines = open(os.path.join(root, ".scratch", "scope"), encoding="utf-8").read().splitlines()
+    except OSError:
+        return None
+    allowed = [l for l in lines if l.strip() and not l.lstrip().startswith("#")]
+    return [f for f in files
+            if not f.startswith(ALWAYS_IN_SCOPE) and not any(matches(f, p) for p in allowed)]
+
+
+def main(argv):
+    scope_only = "--scope" in argv
+    args = [a for a in argv if a != "--scope"]
+    base = args[0] if args else "dev"
+    root = git("rev-parse", "--show-toplevel").strip()
+    os.chdir(root)
+    files = [f for f in git("diff", "--name-only", f"{base}...HEAD").splitlines() if f]
+
+    reasons = []
+    outside = out_of_scope(root, files)
+    if outside:
+        reasons += [f"outside .scratch/scope: {f}" for f in outside]
+    if scope_only:
+        if outside is None:
+            print("scope: no .scratch/scope in this worktree, nothing to check", file=sys.stderr)
+        print("\n".join(reasons) or f"scope: {len(files)} changed files, all in scope")
+        return 1 if reasons else 0
+
+    acceptance = harness_paths(root, "Acceptance tests") or ["tests/acceptance/"]
+    never = harness_paths(root, "Never touch")
+    extra = harness_paths(root, "Sensitive")
+    for f in files:
+        if any(matches(f, p) for p in never):
+            reasons.append(f"never-touch path: {f}")
+        elif any(matches(f, p) for p in acceptance):
+            reasons.append(f"acceptance test: {f}")
+        elif f.endswith("contracts.md"):
+            reasons.append(f"contract: {f}")
+        elif SENSITIVE.search(f.lower()) or any(matches(f, p) for p in extra):
+            reasons.append(f"sensitive path: {f}")
+    code = [f for f in files if not TEST.search(f) and not f.startswith(ALWAYS_IN_SCOPE)]
+    if len(code) > 2:
+        reasons.append(f"{len(code)} non-test files changed (light allows 2)")
+
+    print("full\n" + "\n".join(reasons) if reasons else "light")
+    return 1 if reasons else 0
+
+
+sys.exit(main(sys.argv[1:]))

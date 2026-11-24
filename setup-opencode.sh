@@ -3,12 +3,12 @@
 # a command per skill and the guard plugin. Safe to run again; run it again after a pull,
 # because agents, skills and commands are generated copies. From a fresh machine:
 #   gh repo clone Martinhdeez/uve-harness ~/harness && sh ~/harness/setup-opencode.sh
-# HARNESS_MODEL picks the agents' model (default anthropic/claude-opus-5-5).
+# Each agent keeps its role's model (anthropic/claude-<opus|sonnet|haiku>-5-5); HARNESS_MODEL
+# sets one model for all of them.
 # HARNESS_SKIP_SKILLS=1 skips installing the third-party skills.
 set -e
 here=$(cd "$(dirname "$0")" && pwd)
 config=${XDG_CONFIG_HOME:-$HOME/.config}/opencode
-model=${HARNESS_MODEL:-anthropic/claude-opus-5-5}
 
 for tool in git python3; do
   command -v "$tool" >/dev/null || { echo "setup: '$tool' is not installed" >&2; exit 1; }
@@ -24,8 +24,10 @@ for file in "$here"/agents/*.md; do
   name=$(basename "$file" .md)
   mode=subagent
   [ "$name" = designer ] && mode=all
-  sed -e '/^name: /d' -e "s#^model: opus\$#mode: $mode\\
-model: $model#" -e "$rename" "$file" > "$config/agents/harness-$name.md"
+  # Each role keeps its own model (opus, sonnet, haiku) unless HARNESS_MODEL sets one for all.
+  tier=$(sed -n 's/^model: //p' "$file")
+  sed -e '/^name: /d' -e "s#^model: .*\$#mode: $mode\\
+model: ${HARNESS_MODEL:-anthropic/claude-$tier-5-5}#" -e "$rename" "$file" > "$config/agents/harness-$name.md"
 done
 
 for dir in "$here"/skills/*/; do
