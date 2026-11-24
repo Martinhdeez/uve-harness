@@ -1,0 +1,33 @@
+# uve-harness
+
+> Building software with agents as a Claude Code plugin: iterations of an incremental V-cycle, one agent per role, one gate, and rules a machine enforces.
+
+## Start here
+- [README](README.md): install, the cycle, roles and models, what the machine enforces
+- [Rules for agents editing this repo](AGENTS.md): self-check, where rules live, OpenCode copies
+
+## Skills
+- [init](skills/init/SKILL.md): prepare a project (gate, integration branch, folders, AGENTS.md, llms.txt, `## Harness`)
+- [iteration](skills/iteration/SKILL.md): plan, run and close one iteration; light vs full items; ledger; decisions
+- [templates](skills/iteration/templates/): plan, requirements, brief, change note, checklist, close, decisions
+
+## Agents
+- [builder](agents/builder.md): one fix or feature, tests first, scope file, pull request
+- [test-author](agents/test-author.md): blind acceptance tests from requirements and contracts
+- [reviewer](agents/reviewer.md): scope, failing tests, gate, claims, reconciliation, merge into dev
+- [designer](agents/designer.md): prototype, user approval, then views
+- [assistant](agents/assistant.md): docs, scripts, counts, cleanup
+- [devops](agents/devops.md): CI, containers, deploy, environments
+
+## Machine rules
+- [guard.py](scripts/guard.py): PreToolUse hook: secrets, gate and scope before a pull request, main
+- [harness-gate](bin/harness-gate): run the gate, log the output, stamp the commit
+- [harness-lane](bin/harness-lane): light or full from the diff
+- [harness-scope](bin/harness-scope): branch changes against `.scratch/scope`
+- [harness-trace](bin/harness-trace): every requirement named by a test
+- [tests](tests/test.sh): self-check of all of the above
+
+## Other runtimes and setup
+- [setup.sh](setup.sh): install for Claude Code
+- [setup-opencode.sh](setup-opencode.sh): install for OpenCode
+- [opencode/harness.js](opencode/harness.js): OpenCode plugin running the guard
