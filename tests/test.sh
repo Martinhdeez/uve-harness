@@ -3,8 +3,8 @@
 here=$(cd "$(dirname "$0")/.." && pwd)
 gate=$here/bin/harness-gate
 trace=$here/bin/harness-trace
-tmp=$(mktemp -d)
-trap 'rm -rf "$tmp"' EXIT
+tmp=$(mktemp -d) noisy=$(mktemp -d)
+trap 'rm -rf "$tmp" "$noisy"' EXIT
 fails=0
 
 expect() { # expect <name> <wanted> <got>
@@ -30,6 +30,13 @@ echo >> Makefile
 git checkout -q Makefile && commit next
 "$gate" --check 2>/dev/null; expect "gate: a new commit voids the stamp" 2 $?
 
+# gate: a long red run is summarised, the full output stays in a log
+(cd "$noisy" && git init -q && printf 'check:\n\t@seq 1 500; exit 1\n' > Makefile &&
+  git add -A && commit init && "$gate" 2> err; echo $? > code)
+expect "gate: noisy red run exits 1" 1 "$(cat "$noisy/code")"
+expect "gate: full output kept in the log" 500 "$(grep -c '^[0-9]' "$noisy/.git/gate.log")"
+expect "gate: agent sees a summary, not the run" yes "$([ "$(wc -l < "$noisy/err")" -lt 60 ] && echo yes)"
+
 # guard: gate before a pull request
 expect "guard: no gate demanded before /harness:init" allow "$(bash_guard 'gh pr create --base dev --fill')"
 printf '# Project\n\n## Harness\n' > AGENTS.md && git add -A && commit harness
@@ -47,6 +54,13 @@ expect "guard: grep in .env.production" deny "$(bash_guard 'grep KEY backend/.en
 expect "guard: cat .env.example" allow "$(bash_guard 'cat .env.example')"
 expect "guard: cp .env.example .env" allow "$(bash_guard 'cp .env.example .env')"
 expect "guard: compose with an env file" allow "$(bash_guard 'docker compose --env-file .env up -d')"
+expect "guard: python reads .env" deny "$(bash_guard "python3 -c \"print(open('.env').read())\"")"
+expect "guard: source .env" deny "$(bash_guard 'source .env && echo ok')"
+expect "guard: dot-source .env" deny "$(bash_guard '. ./.env')"
+expect "guard: .env redirected into a loop" deny "$(bash_guard 'while read l; do echo $l; done < .env')"
+expect "guard: jq on .env.json-like file" deny "$(bash_guard 'jq . .env.local')"
+expect "guard: node --env-file runs the app" allow "$(bash_guard 'node --env-file=.env server.js')"
+expect "guard: heredoc is not a redirect of .env" allow "$(bash_guard "cat <<'EOF' >> .gitignore")"
 
 # guard: main
 expect "guard: push a feature branch" allow "$(bash_guard 'git push -u origin feat/main-menu')"
@@ -60,6 +74,25 @@ expect "guard: merge while on main" ask "$(bash_guard 'git merge dev')"
 expect "guard: merge --abort while on main" allow "$(bash_guard 'git merge --abort')"
 expect "guard: other commands on main" allow "$(bash_guard 'git status && git log --oneline -3')"
 git checkout -q dev
+
+# lane and scope
+lane=$here/bin/harness-lane scope=$here/bin/harness-scope
+git checkout -q -b feat/lane
+mkdir -p src && echo a > src/a.ts && echo t > src/a.test.ts && git add -A && commit small
+expect "lane: one file and its test is light" light "$("$lane" dev 2>/dev/null)"
+echo b > src/auth.ts && git add -A && commit auth
+expect "lane: a sensitive path makes it full" "full|sensitive path: src/auth.ts" "$("$lane" dev 2>/dev/null | paste -sd'|' -)"
+echo c > src/b.ts && echo d > src/c.ts && git add -A && commit wide
+case $("$lane" dev 2>/dev/null) in *"4 non-test files"*) expect "lane: more than two code files is full" ok ok ;;
+  *) expect "lane: more than two code files is full" ok "$("$lane" dev 2>&1)" ;; esac
+"$scope" dev >/dev/null 2>&1; expect "scope: no scope file passes" 0 $?
+mkdir -p .scratch && echo 'src/a.ts' > .scratch/scope
+"$scope" dev >/dev/null 2>&1; expect "scope: a file outside the scope exits 1" 1 $?
+printf '# the brief opens src\nsrc/\n' > .scratch/scope
+"$scope" dev >/dev/null 2>&1; expect "scope: a folder line covers its files" 0 $?
+echo 'src/a.ts' > .scratch/scope && "$gate" 2>/dev/null
+expect "guard: gh pr create outside the scope" deny "$(bash_guard 'gh pr create --base dev --fill')"
+rm -rf .scratch && git checkout -q dev
 
 # trace
 mkdir -p tests && cat > requirements.md <<'EOF'
@@ -86,8 +119,9 @@ case $out in *Opus*proj*) expect "statusline: renders model and folder" ok ok ;;
 # opencode
 xdg=$tmp/xdg && oc=$xdg/opencode
 XDG_CONFIG_HOME=$xdg HARNESS_SKIP_SKILLS=1 sh "$here/setup-opencode.sh" >/dev/null 2>&1
-expect "opencode: builder is a subagent with a provider model" "mode: subagent|model: anthropic/claude-opus-5-5" \
+expect "opencode: builder is a subagent with its role's model" "mode: subagent|model: anthropic/claude-sonnet-5-5" \
   "$(grep -E '^(mode|model):' "$oc/agents/harness-builder.md" | paste -sd'|' -)"
+expect "opencode: reviewer keeps opus" "model: anthropic/claude-opus-5-5" "$(grep '^model:' "$oc/agents/harness-reviewer.md")"
 expect "opencode: designer can also be a primary agent" "mode: all" "$(grep '^mode:' "$oc/agents/harness-designer.md")"
 expect "opencode: no Claude Code names left" "" "$(grep -rl 'harness:\|claude --agent' "$oc" | grep -v plugins)"
 expect "opencode: skill renamed with its templates" "name: harness-iteration yes" \

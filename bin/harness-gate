@@ -32,12 +32,22 @@ if clean && [ -z "$HARNESS_GATE_FRESH" ] && [ -f "$green/$tree" ]; then
   echo "gate: GREEN at $(git rev-parse --short HEAD) (same tree passed at $(cat "$green/$tree"))" >&2
   exit 0
 fi
+# The full output goes to a log inside the git dir (never committed, one per worktree); the
+# agent sees only a summary, so a long test run does not fill its context.
+log=$(git rev-parse --absolute-git-dir)/gate.log
 echo "gate: $gate" >&2
-$gate || { echo "gate: RED" >&2; exit 1; }
+if ! $gate > "$log" 2>&1; then
+  grep -inE 'error|fail|panic|exception|✗|✖' "$log" | head -n 40 >&2
+  echo "gate: --- last 30 lines ---" >&2
+  tail -n 30 "$log" >&2
+  echo "gate: RED. Full output: $log" >&2
+  exit 1
+fi
+tail -n 5 "$log" >&2
 if clean; then
   git rev-parse HEAD > "$stamp"
   mkdir -p "$green" && git rev-parse --short HEAD > "$green/$tree"
-  echo "gate: GREEN at $(git rev-parse --short HEAD)" >&2
+  echo "gate: GREEN at $(git rev-parse --short HEAD). Full output: $log" >&2
 else
   echo "gate: GREEN, but uncommitted changes: not stamped. Commit and run again." >&2
 fi

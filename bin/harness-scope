@@ -1,0 +1,5 @@
+#!/bin/sh
+# harness-scope [base] — every path the branch changes since base (default dev) must match a
+# line of .scratch/scope (globs or folders, one per line). Exits 1 and lists the ones outside.
+# The agent copies its brief's "In scope" list there before its first edit.
+exec python3 "$(dirname "$0")/harness-lane" --scope "$@"
