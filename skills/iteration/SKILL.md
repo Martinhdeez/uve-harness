@@ -57,8 +57,9 @@ change it.
 
 ## Phase 1: plan
 
-1. Read the project's rules, the last iteration's closing note and open findings, and the
-   code the iteration touches.
+1. Read the project's rules, `llms.txt` if there is one (then only the docs the iteration
+   needs), the last iteration's closing note and open findings, and the code the iteration
+   touches.
 2. Create `docs/plan/<NN-slug>/` from the templates in this skill's `templates/` folder:
    - `00-plan.md`: goal of the increment, items with short ids (two or three letters and a
      number: `TR1`) and their weight, order and waves, what is out of scope.
