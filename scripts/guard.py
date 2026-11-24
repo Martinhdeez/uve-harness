@@ -77,6 +77,12 @@ def check_bash(command, cwd):
     # quotes one of these commands can trigger a prompt. Asking once too often is the safe side.
     for segment in re.split(r"&&|\|\||[;|\n]", command):
         tokens = segment.split()
+        if tokens[:1] == ["cd"] and len(tokens) == 2:
+            # Later segments run in that directory: check the stamp and branch there.
+            cwd = os.path.join(cwd, os.path.expanduser(tokens[1].strip("'\"")))
+            out = run(["git", "branch", "--show-current"], cwd)
+            on_protected = bool(out) and out.stdout.strip() in PROTECTED
+            continue
         if "git" in tokens and "push" in tokens:
             args = [t for t in tokens[tokens.index("push") + 1:] if not t.startswith("-")]
             if targets_protected(args) or (on_protected and len(args) < 2):

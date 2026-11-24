@@ -23,10 +23,20 @@ if [ "$1" = --check ]; then
 fi
 
 rm -f "$stamp"
+# A green tree is remembered for every worktree of the repository: the same content never runs the gate twice.
+# HARNESS_GATE_FRESH=1 runs it anyway.
+green="$(cd "$(git rev-parse --git-common-dir)" && pwd)/gate-green"
+tree=$(git rev-parse 'HEAD^{tree}')
+if clean && [ -z "$HARNESS_GATE_FRESH" ] && [ -f "$green/$tree" ]; then
+  git rev-parse HEAD > "$stamp"
+  echo "gate: GREEN at $(git rev-parse --short HEAD) (same tree passed at $(cat "$green/$tree"))" >&2
+  exit 0
+fi
 echo "gate: $gate" >&2
 $gate || { echo "gate: RED" >&2; exit 1; }
 if clean; then
   git rev-parse HEAD > "$stamp"
+  mkdir -p "$green" && git rev-parse --short HEAD > "$green/$tree"
   echo "gate: GREEN at $(git rev-parse --short HEAD)" >&2
 else
   echo "gate: GREEN, but uncommitted changes: not stamped. Commit and run again." >&2

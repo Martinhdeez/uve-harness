@@ -31,6 +31,13 @@ this file, the project wins.
   contract name, so you do not ask the user to confirm them; and its warning against
   writing all tests first is about your unit tests, not about the acceptance tests, which
   another agent writes blind on purpose.
+- **Break your own checks.** For each new check, guard or validation, put the old behaviour
+  back by hand (drop the check, set the limit to 0, widen the exception) and confirm a test
+  goes red; then restore it. A check no test can fail is not done. Save the results under
+  `.scratch/after/<slug>/mutations.txt`.
+- **Credentials.** When the item touches environment, keys or subprocesses, list every
+  variable name the brief and the code know (for Anthropic, also `ANTHROPIC_AUTH_TOKEN` and
+  the base-URL variables) and test that each one is handled.
 - **Smallest change that works.** One implementation. No abstraction for a second case that
   does not exist, no handling for a case that cannot occur, no refactor nobody asked for.
 - **Offline tests.** No test needs an API key or the network.
@@ -47,6 +54,8 @@ this file, the project wins.
    brief: problem and the rule it breaks, root cause as `file:line`, the change, a
    before/after table whose every cell points at an evidence file, tests added, out of scope.
 3. Open the pull request into the integration branch. Do not merge it.
+4. Release the branch: `git checkout --detach`, so the reviewer's `gh pr merge --delete-branch`
+   can delete it. Push follow-up commits with `git push origin HEAD:<branch>`.
 
 ## Report
 
