@@ -31,8 +31,8 @@ It writes into `~/.config/opencode/`: the agents as `harness-<role>` subagents (
 is also a primary agent), the skills as `harness-init` and `harness-iteration` with a command
 each, and `plugins/harness.js`, which runs `scripts/guard.py` before `shell`, `read` and
 `grep` and puts `bin/` on the shell's `PATH`. Agents, skills and commands are copies: run the
-script again after a pull. `HARNESS_MODEL` picks the model (default
-`anthropic/claude-opus-5-5`).
+script again after a pull. Each agent keeps its role's model
+(`anthropic/claude-<opus|sonnet>-5-5`); `HARNESS_MODEL` sets one model for all of them.
 
 Differences from Claude Code:
 
@@ -59,15 +59,19 @@ The user approves at three points: the plan of the iteration, each prototype, an
 
 ## Roles
 
-| Role | Does | Never |
-|---|---|---|
-| Orchestrator (`skills/iteration`) | plans, writes one brief per item, launches agents, relays | writes code |
-| `builder` | one fix or feature, unit tests, evidence, change note, pull request | merges, edits acceptance tests |
-| `test-author` | acceptance tests from requirements and contracts | reads the implementation |
-| `reviewer` | re-runs the gate, proves tests can fail, reconciles, merges into `dev` | fixes implementation, touches `main` |
-| `designer` | prototypes the views, then implements them once approved | implements before approval |
-| `assistant` | docs, scripts, counts, cleanup | changes product behaviour |
-| `devops` | CI, containers, deploy scripts, environments, backups | touches production unasked |
+| Role | Model | Does | Never |
+|---|---|---|---|
+| Orchestrator (`skills/iteration`) | the session's | plans, writes one brief per item, launches agents, relays | writes code |
+| `builder` | sonnet | one fix or feature, unit tests, evidence, change note, pull request | merges, edits acceptance tests |
+| `test-author` | sonnet | acceptance tests from requirements and contracts | reads the implementation |
+| `reviewer` | opus | re-runs the gate, proves tests can fail, reconciles, merges into `dev` | fixes implementation, touches `main` |
+| `designer` | opus | prototypes the views, then implements them once approved | implements before approval |
+| `assistant` | sonnet | docs, scripts, counts, cleanup | changes product behaviour |
+| `devops` | sonnet | CI, containers, deploy scripts, environments, backups | touches production unasked |
+
+A strong model judges (reviewer, designer) and cheaper ones execute, so the reviewer is also
+not the builder's model. Change a role's `model:` line to move it; the ledger's cost per
+item says whether a move paid off.
 
 ## What the machine enforces
 
@@ -76,13 +80,17 @@ The user approves at three points: the plan of the iteration, each prototype, an
 | Rule | Effect |
 |---|---|
 | `gh pr create` without a green gate on the current commit, in a project prepared with `/harness:init` | denied |
-| Reading a `.env*` file that is not an example | denied |
+| `gh pr create` when the branch changes a file outside `.scratch/scope` (the brief's *In scope*) | denied |
+| Reading a `.env*` file that is not an example (also through interpreters, editors, `source`, `.` and `<`) | denied |
 | A push or a merge that lands on `main` or `master` | asks the user |
 
-`bin/harness-gate` runs the project's gate (`make check` or `npm run verify`) and stamps the
-commit it passed on. `bin/harness-trace` fails when a requirement id has no test naming it.
+`bin/harness-gate` runs the project's gate (`make check` or `npm run verify`), keeps the full
+output in `<git dir>/gate.log`, shows the agent only the failing lines and the tail, and stamps
+the commit it passed on. `bin/harness-lane` decides from the diff whether an item may stay
+light (paths touched, not lines). `bin/harness-scope` checks a branch against `.scratch/scope`.
+`bin/harness-trace` fails when a requirement id has no test naming it.
 
-Everything else (scope, who may read what, the designer's files) is a rule the agents are
+Everything else (who may read what, the designer's files) is a rule the agents are
 given and the reviewer checks; it is not enforced by a hook.
 
 ## Status line
@@ -110,7 +118,8 @@ project's file wins over the plugin.
 
 ```text
 docs/plan/<NN-slug>/     00-plan.md, requirements.md, contracts.md, mocks/, 99-close.md
-docs/advance/            checklist-<NN>.md
+docs/advance/            checklist-<NN>.md, ledger-<NN>.jsonl (agent, model, tokens, minutes, rounds)
+docs/decisions.md        decisions that outlive an iteration, read at every plan
 .artifacts/to-test/      change notes waiting for review; moved to tested/ on merge
 .scratch/after/<slug>/   evidence, never committed
 ```

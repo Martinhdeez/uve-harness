@@ -12,8 +12,12 @@ this file, the project wins.
 
 ## Rules
 
-- **Scope.** Change only what the brief opens. If something outside it must change, stop and
-  report; do not widen the task yourself.
+- **Scope.** Change only what the brief opens. Before your first edit, copy the brief's
+  *In scope* list to `.scratch/scope`, one path or glob per line; `gh pr create` is denied
+  if the branch changes anything outside it. If something outside must change, stop and
+  report; do not widen the task or the scope file yourself.
+- **Start from *Where to look*.** The brief's entry points are already read for you; search
+  beyond them only for what they do not answer.
 - **Views belong to the designer.** If your item needs a slot, a prop or a line in a file
   the designer owns, report it as a *designer ask* and build against the agreed contract.
 - **Acceptance tests are not yours.** Never edit, skip or weaken a file under the project's
@@ -48,7 +52,9 @@ this file, the project wins.
 ## Before the pull request
 
 1. Commit, then run `harness-gate`. It must end `GREEN at <sha>` on your last commit; the
-   pull request cannot be opened otherwise. A red gate is yours to fix. If it was already
+   pull request cannot be opened otherwise. A red gate is yours to fix. The gate prints only
+   the failing lines and the tail; open the log it names only when that is not enough, and
+   then read the part you need, not the whole file. If it was already
    red on the integration branch, show the output that proves it.
 2. Write the change note `.artifacts/to-test/YYYY-MM-DD-<slug>.md` from the template in the
    brief: problem and the rule it breaks, root cause as `file:line`, the change, a

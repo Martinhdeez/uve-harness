@@ -12,6 +12,15 @@ Integration branch at `<sha>`; gate: `<command>` green on <date>.
 | What | Value | Command | Output |
 |---|---|---|---|
 
+## Cost per item
+
+From `docs/advance/ledger-<NN>.jsonl`, one row per agent run.
+
+| Id | Agent | Model | Weight → lane | Tokens | Minutes | Review rounds | Outcome |
+|---|---|---|---|---|---|---|---|
+
+Totals: <tokens> tokens, <minutes> minutes. Light items: <n>, of which <n> went to review.
+
 ## Not measured
 
 <Stated plainly, so no later document claims it.>

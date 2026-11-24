@@ -16,7 +16,8 @@ Do the checks, then show the user what is missing before changing anything.
 3. **CI.** If there is a workflow, it should run the gate command. If it runs something
    else, report the difference.
 4. **Folders.** `docs/plan/`, `docs/advance/`, `.artifacts/to-test/`, `.artifacts/tested/`,
-   and `.scratch/` listed in `.gitignore`.
+   `docs/decisions.md` from the iteration skill's `templates/decisions.md`, and `.scratch/`
+   listed in `.gitignore`.
 5. **Agent instructions and docs index.** Every tool reads the same rules from one place:
    - `AGENTS.md` at the root is the canonical file (Codex, Cursor, Aider and most others read
      it). If the rules live only in `CLAUDE.md`, propose moving them to `AGENTS.md` and
@@ -46,6 +47,7 @@ Work goes through the `harness` plugin: `/harness:iteration`.
 - **Acceptance tests:** `tests/acceptance/`
 - **Docs:** <where, and the index: `llms.txt`>. Never read <generated folder, e.g. `site/`>.
 - **Never touch:** <paths no agent may change>
+- **Sensitive:** <paths that always get a full review, beyond the built-in list in `harness-lane`: auth, payments, migrations, CI, containers, `.env`>
 - **Designer owns:** <view and style paths>
 - **Extra roles:** <none, or a role with one line on what it does>
 ```

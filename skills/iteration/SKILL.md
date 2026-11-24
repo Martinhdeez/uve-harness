@@ -57,9 +57,10 @@ change it.
 
 ## Phase 1: plan
 
-1. Read the project's rules, `llms.txt` if there is one (then only the docs the iteration
-   needs), the last iteration's closing note and open findings, and the code the iteration
-   touches.
+1. Read the project's rules, `docs/decisions.md` (create it from `templates/decisions.md` if
+   missing), `llms.txt` if there is one (then only the docs the iteration needs), the last
+   iteration's closing note and open findings, and the code the iteration touches. A plan
+   that contradicts an active decision says so and proposes superseding it.
 2. Create `docs/plan/<NN-slug>/` from the templates in this skill's `templates/` folder:
    - `00-plan.md`: goal of the increment, items with short ids (two or three letters and a
      number: `TR1`) and their weight, order and waves, what is out of scope.
@@ -80,6 +81,8 @@ ask the user.
 For each item, in the order of the plan:
 
 1. **Write the brief** from `templates/brief.md`. It is the only context the agent gets.
+   Fill *Where to look* with the `file:line` entry points you read in the plan, so the agent
+   does not rediscover them, except in a test author's brief, which never gets one.
 2. **Launch the agent** in its own worktree; where the runtime does not create one (OpenCode),
    the brief tells the agent to make it with `git worktree add`. Items with no shared files
    run in parallel. In
@@ -91,16 +94,21 @@ For each item, in the order of the plan:
 4. **View items**: the designer prototypes, then you stop. **Checkpoint: the user approves
    the prototype.** Only then tell the designer to implement. Forward *designer asks* from
    builders as soon as they appear, so slots ship with the views instead of reopening them.
-5. **Light items** skip steps 6 to 8. When the pull request opens, check that `harness-gate`
-   stamped its head commit green and that the diff stays inside the brief's scope, then
-   merge it into the integration branch and tick the checklist. If either check fails, the
-   item becomes full and goes to review.
+5. **Light items** skip steps 6 to 8. When the pull request opens, check out its head and
+   run `harness-gate --check` and `harness-lane <integration branch>`. Both pass: merge it
+   into the integration branch and tick the checklist. Either fails: the item becomes full,
+   goes to review, and the ledger records the lane as `light → full` with the reasons
+   `harness-lane` printed. The script decides, not your reading of the diff.
 6. **Review**: when a pull request opens, launch `harness:reviewer` with the brief and the
    pull request number. Do not pass the builder's report or your opinion: the reviewer reads
    the diff cold.
 7. On `request changes`, send the findings to the same agent and review again. After two
    rounds without approval, stop and bring the disagreement to the user.
 8. The reviewer merges into the integration branch and ticks the checklist. Check that it did.
+9. **Ledger.** After every agent run, append one line to `docs/advance/ledger-<NN>.jsonl`:
+   `{"item","agent","model","weight","lane","tokens","minutes","review_round","outcome"}`.
+   Tokens and minutes come from the agent's result (its usage and duration); when the
+   runtime does not report them, write `null`, never an estimate.
 
 If an agent reports that the brief or a requirement is wrong, fix the plan first; do not let
 it improvise around it.
@@ -110,17 +118,24 @@ it improvise around it.
 1. Run `harness-gate` on the integration branch. Recount every figure the documents quote,
    with the commands that produce them (an assistant can do it).
 2. Write the closing note `docs/plan/<NN-slug>/99-close.md` from the template: what was
-   delivered per item with its pull request, what was measured and by which run, what was
-   **not** measured, what is parked and why, and the findings that open the next iteration.
+   delivered per item with its pull request, the cost per item from the ledger, what was
+   measured and by which run, what was **not** measured, what is parked and why, and the
+   findings that open the next iteration.
 3. Draw at most three lessons about the harness itself, not the product: a pattern seen in
    this iteration's reviews, rejected pull requests or reworked briefs (a builder that
    missed the same thing twice, a brief that lacked a fixture, a gate that let a fault
    through). Each lesson cites its evidence (pull requests, review findings) and proposes
    one concrete edit to the affected role's agent file or to the project's `## Harness`
-   section. A pattern seen once is a finding, not a lesson. Apply nothing yet.
-4. **Checkpoint: the user approves the close** and, one by one, the proposed lesson edits.
-   Apply the approved edits; a rejected lesson stays in the closing note only. The next
-   iteration is not planned before this.
+   section. A pattern seen once is a finding, not a lesson. Apply nothing yet. Two lesson
+   candidates always come from the ledger without waiting for a pattern: every light item
+   that went `light → full` (was the plan's weight wrong, or is a `harness-lane` rule too
+   strict?), and any role whose review rounds or tokens stand out against the others (is
+   its model or its brief the cause?).
+4. Propose the decisions this iteration took (an architecture choice, a rejected approach,
+   a convention) as new entries for `docs/decisions.md`, or as `superseded` marks.
+5. **Checkpoint: the user approves the close**, the decision entries, and, one by one, the
+   proposed lesson edits. Apply what was approved; a rejected lesson stays in the closing
+   note only. The next iteration is not planned before this.
 
 ## Rules that hold in every phase
 
@@ -131,3 +146,7 @@ it improvise around it.
 - **One brief, one proof.** An item that needs two unrelated proofs is two items.
 - **Ask the user** when a goal or an acceptance criterion cannot be settled from the
   repository, at the three checkpoints, and before anything irreversible. Not otherwise.
+- **The user may not be watching.** Whenever you stop to wait for the user (a checkpoint,
+  a disagreement after two review rounds, a blocked agent), send a push notification if the
+  runtime has a tool for it (Claude Code: `PushNotification`): one line naming what is
+  waiting and the decision needed. Then stop; do not keep working past a checkpoint.

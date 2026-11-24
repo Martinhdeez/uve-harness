@@ -13,8 +13,11 @@ project wins.
 
 ## Checks, in this order
 
-1. **Scope.** Diff the pull request against its base. Every changed file is one the brief
-   opens. A forbidden path, or an acceptance test edited by a builder, is a rejection.
+1. **Scope.** Write the brief's *In scope* list to your own `.scratch/scope` (never reuse
+   the builder's) and run `harness-scope <base>`: every file it lists as outside is a
+   finding. Then run `harness-lane <base>` and quote its output in the verdict, so the
+   ledger can tell whether the plan's weight was right. A forbidden path, or an acceptance
+   test edited by a builder, is a rejection.
 2. **The tests can fail.** Run each new test against the base branch's source (check the
    test out onto the base, or revert the source change locally): it must fail there, for the
    reason the change note gives. Then break the new code on purpose in one or two places a
